@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
     LayoutDashboard,
     Users,
@@ -12,14 +13,13 @@ import {
     BarChart3,
     Server,
     Settings,
-    Bell,
     CalendarDays,
-    Search,
     Sun,
     Moon,
     Menu,
     X,
     Sparkles,
+    type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,37 +32,76 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    CommandDialog,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from "@/components/ui/command";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
-import { currentUser, notifications, searchIndex } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth";
+import { initials } from "@/lib/auth-session";
+import { canOpenPlanner, visibleNav, type NavDestination } from "@/lib/navigation";
 
-const nav = [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/crm", label: "CRM", icon: Users },
-    { to: "/leads", label: "Leads", icon: Target },
-    { to: "/sales", label: "Sales", icon: TrendingUp },
-    { to: "/projects", label: "Projects", icon: FolderKanban },
-    { to: "/finance", label: "Finance", icon: Wallet },
-    { to: "/marketing", label: "Marketing", icon: Megaphone },
-    { to: "/hr", label: "HR", icon: UserCog },
-    { to: "/reports", label: "Reports", icon: BarChart3 },
-    { to: "/assets", label: "Assets", icon: Server },
-    { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+const navIcons: Record<NavDestination["to"], LucideIcon> = {
+    "/": LayoutDashboard,
+    "/crm": Users,
+    "/leads": Target,
+    "/sales": TrendingUp,
+    "/projects": FolderKanban,
+    "/finance": Wallet,
+    "/marketing": Megaphone,
+    "/hr": UserCog,
+    "/reports": BarChart3,
+    "/assets": Server,
+    "/settings": Settings,
+};
 
 export function AppShell({ children }: { children: ReactNode }) {
+    const auth = useAuth();
+    const navigate = useNavigate();
     const [open, setOpen] = useState(false);
-    const [cmdOpen, setCmdOpen] = useState(false);
+    const [signingOut, setSigningOut] = useState(false);
     const { theme, toggle } = useTheme();
     const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+    useEffect(() => {
+        if (auth.status === "unauthenticated" || auth.status === "expired") {
+            void navigate({ to: "/login", replace: true });
+        }
+    }, [auth.status, navigate]);
+
+    if (auth.status !== "authenticated" || !auth.user) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background px-4">
+                <div className="max-w-md text-center">
+                    <p className="text-sm text-muted-foreground">
+                        {auth.status === "error"
+                            ? auth.message
+                            : auth.status === "unauthenticated" || auth.status === "expired"
+                              ? "Redirecting to sign in…"
+                              : "Checking your session…"}
+                    </p>
+                    {auth.status === "error" ? (
+                        <Button className="mt-4" onClick={() => void auth.refresh()}>
+                            Try again
+                        </Button>
+                    ) : null}
+                </div>
+            </div>
+        );
+    }
+
+    const user = auth.user;
+    const destinations = visibleNav(user.permissions);
+    const showPlanner = canOpenPlanner(user.permissions);
+    const showSettings = destinations.some((item) => item.to === "/settings");
+
+    async function signOut() {
+        setSigningOut(true);
+        try {
+            await auth.logout();
+            await navigate({ to: "/login", replace: true });
+        } catch {
+            toast.error("Could not sign out");
+            setSigningOut(false);
+        }
+    }
 
     return (
         <div className="min-h-screen w-full bg-background">
@@ -98,8 +137,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
 
                 <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-                    {nav.map((item) => {
+                    {destinations.map((item) => {
                         const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+                        const Icon = navIcons[item.to];
                         return (
                             <Link
                                 key={item.to}
@@ -112,20 +152,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                                         : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                                 )}
                             >
-                                <item.icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
+                                <Icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
                                 <span className="truncate">{item.label}</span>
                             </Link>
                         );
                     })}
                 </nav>
-
-                <div className="m-3 rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3">
-                    <p className="text-xs font-medium">Monthly goal</p>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div className="brand-gradient h-full w-[78%] rounded-full" />
-                    </div>
-                    <p className="mt-2 text-[11px] text-muted-foreground">78% of ₹62L target</p>
-                </div>
             </aside>
 
             {open ? (
@@ -149,42 +181,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <Menu className="h-4 w-4" />
                     </Button>
 
-                    <button
-                        onClick={() => setCmdOpen(true)}
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border bg-background/60 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-background sm:max-w-sm"
-                    >
-                        <Search className="h-4 w-4 shrink-0" />
-                        <span className="truncate">Search everything…</span>
-                        <kbd className="ml-auto hidden shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-                            ⌘K
-                        </kbd>
-                    </button>
-
                     <div className="ml-auto flex shrink-0 items-center gap-1">
-                        <Button variant="ghost" size="icon" aria-label="Calendar" asChild>
-                            <Link to="/planner">
-                                <CalendarDays className="h-4 w-4" />
-                            </Link>
-                        </Button>
-
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" aria-label="Notifications" className="relative">
-                                    <Bell className="h-4 w-4" />
-                                    <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-80">
-                                <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {notifications.map((n) => (
-                                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-0.5">
-                                        <span className="text-sm">{n.title}</span>
-                                        <span className="text-xs text-muted-foreground">{n.time} ago</span>
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        {showPlanner ? (
+                            <Button variant="ghost" size="icon" aria-label="Calendar" asChild>
+                                <Link to="/planner">
+                                    <CalendarDays className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                        ) : null}
 
                         <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
                             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -194,26 +198,30 @@ export function AppShell({ children }: { children: ReactNode }) {
                             <DropdownMenuTrigger asChild>
                                 <button className="ml-1 flex items-center gap-2 rounded-full border border-border py-1 pl-1 pr-3 transition-colors hover:bg-accent">
                                     <span className="brand-gradient grid h-7 w-7 place-items-center rounded-full text-xs font-semibold text-primary-foreground">
-                                        {currentUser.initials}
+                                        {initials(user.name)}
                                     </span>
-                                    <span className="hidden text-sm font-medium sm:inline">{currentUser.name}</span>
+                                    <span className="hidden text-sm font-medium sm:inline">{user.name}</span>
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
                                 <DropdownMenuLabel className="flex flex-col">
-                                    <span>{currentUser.name}</span>
-                                    <span className="text-xs font-normal text-muted-foreground">{currentUser.email}</span>
+                                    <span>{user.name}</span>
+                                    <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link to="/settings">Settings</Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link to="/planner">Daily planner</Link>
-                                </DropdownMenuItem>
+                                {showSettings ? (
+                                    <DropdownMenuItem asChild>
+                                        <Link to="/settings">Settings</Link>
+                                    </DropdownMenuItem>
+                                ) : null}
+                                {showPlanner ? (
+                                    <DropdownMenuItem asChild>
+                                        <Link to="/planner">Daily planner</Link>
+                                    </DropdownMenuItem>
+                                ) : null}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link to="/login">Sign out</Link>
+                                <DropdownMenuItem disabled={signingOut} onSelect={() => void signOut()}>
+                                    {signingOut ? "Signing out…" : "Sign out"}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -223,33 +231,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <main className="relative mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6">
                     <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary">
-                            {currentUser.role}
+                            {user.role}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                            Role-based access · showing every module available to you
+                            Showing the modules this account can open
                         </span>
+                        {auth.message ? <span className="text-xs text-destructive">{auth.message}</span> : null}
                     </div>
                     {children}
                 </main>
             </div>
-
-            <CommandDialog open={cmdOpen} onOpenChange={setCmdOpen}>
-                <CommandInput placeholder="Search clients, leads, projects, invoices, employees…" />
-                <CommandList>
-                    <CommandEmpty>No results found.</CommandEmpty>
-                    {["Clients", "Leads", "Projects", "Invoices", "Employees"].map((group) => (
-                        <CommandGroup key={group} heading={group}>
-                            {searchIndex
-                                .filter((i) => i.group === group)
-                                .map((i) => (
-                                    <CommandItem key={`${group}-${i.label}`} onSelect={() => setCmdOpen(false)} asChild>
-                                        <Link to={i.to}>{i.label}</Link>
-                                    </CommandItem>
-                                ))}
-                        </CommandGroup>
-                    ))}
-                </CommandList>
-            </CommandDialog>
         </div>
     );
 }

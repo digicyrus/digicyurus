@@ -17,6 +17,34 @@
     "include": [
         "src/**/*.ts",
         "src/**/*.tsx",
+        "src/**/*.d.ts",
         "vite.config.ts"
+    ],
+    "exclude": [
+        "src/components/ui/accordion.tsx",
+        "src/components/ui/alert-dialog.tsx",
+        "src/components/ui/aspect-ratio.tsx",
+        "src/components/ui/avatar.tsx",
+        "src/components/ui/calendar.tsx",
+        "src/components/ui/carousel.tsx",
+        "src/components/ui/chart.tsx",
+        "src/components/ui/collapsible.tsx",
+        "src/components/ui/context-manu.tsx",
+        "src/components/ui/drawer.tsx",
+        "src/components/ui/form.tsx",
+        "src/components/ui/hover-card.tsx",
+        "src/components/ui/input-otp.tsx",
+        "src/components/ui/manubar.tsx",
+        "src/components/ui/navigation-manu.tsx",
+        "src/components/ui/popover.tsx",
+        "src/components/ui/radio-group.tsx",
+        "src/components/ui/resizable.tsx",
+        "src/components/ui/scroll-area.tsx",
+        "src/components/ui/separator.tsx",
+        "src/components/ui/sidebar.tsx",
+        "src/components/ui/slider.tsx",
+        "src/components/ui/toggle-group.tsx",
+        "src/components/ui/toggle.tsx",
+        "src/components/ui/tooltip.tsx"
     ]
 }

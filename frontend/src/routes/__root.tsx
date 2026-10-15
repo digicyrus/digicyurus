@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../components/theme-provider";
 import { Toaster } from "../components/ui/sonner";
+import { AuthProvider } from "../lib/auth";
 
 
 function NotFoundComponent() {
@@ -100,7 +101,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
                 rel: "stylesheet",
                 href: "https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500&display=swap",
             },
-            { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+            { rel: "icon", href: "/favicon.png", type: "image/png" },
+            { rel: "icon", href: "/favicon.ico", sizes: "48x48" },
         ],
     }),
 
@@ -130,9 +132,11 @@ function RootComponent() {
     return (
         <QueryClientProvider client={queryClient}>
             <ThemeProvider>
-                {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-                <Outlet />
-                <Toaster />
+                <AuthProvider>
+                    {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+                    <Outlet />
+                    <Toaster />
+                </AuthProvider>
             </ThemeProvider>
         </QueryClientProvider>
 

@@ -1,18 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { AuthLayout } from "@/components/auth-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { rolePermissions } from "@/lib/mock-data";
+import { useAuth } from "@/lib/auth";
+import { loginErrorText } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/login")({
     head: () => ({
@@ -28,59 +22,91 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
     const navigate = useNavigate();
+    const auth = useAuth();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [emailError, setEmailError] = useState<string | null>(null);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (auth.status === "authenticated") {
+            void navigate({ to: "/", replace: true });
+        }
+    }, [auth.status, navigate]);
+
+    async function onSubmit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setSubmitting(true);
+        setFormError(null);
+        setEmailError(null);
+        setPasswordError(null);
+        try {
+            await auth.login(email, password);
+            await navigate({ to: "/", replace: true });
+        } catch (error) {
+            const text = loginErrorText(error);
+            setFormError(text.form);
+            setEmailError(text.email);
+            setPasswordError(text.password);
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    const banner = formError ?? (auth.status === "expired" || auth.status === "error" ? auth.message : null);
+
     return (
         <AuthLayout
             title="Welcome back"
             subtitle="Sign in to your agency workspace"
             footer={
-                <>
-                    New to DigiCyrus?{" "}
-                    <Link to="/register" className="font-medium text-primary hover:underline">
-                        Create an account
-                    </Link>
-                </>
+                <span className="text-muted-foreground">Accounts are created by an administrator.</span>
             }
         >
-            <form
-                className="space-y-4"
-                onSubmit={(e) => {
-                    e.preventDefault();
-                    toast.success("Signed in as Super Admin");
-                    navigate({ to: "/" });
-                }}
-            >
-                <div>
-                    <Label className="text-xs text-muted-foreground">Work email</Label>
-                    <Input className="mt-1.5" type="email" defaultValue="aarav@digicyrus.com" required />
-                </div>
-                <div>
-                    <Label className="text-xs text-muted-foreground">Password</Label>
-                    <Input className="mt-1.5" type="password" defaultValue="demo-password" required />
-                </div>
-                <div>
-                    <Label className="text-xs text-muted-foreground">Sign in as</Label>
-                    <Select defaultValue="Super Admin">
-                        <SelectTrigger className="mt-1.5 w-full">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {rolePermissions.map((r) => (
-                                <SelectItem key={r.role} value={r.role}>
-                                    {r.role}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="flex justify-end">
-                    <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-                        Forgot password?
-                    </Link>
-                </div>
-                <Button type="submit" className="w-full">
-                    Sign in
-                </Button>
-            </form>
+            {auth.status === "loading" ? (
+                <p className="text-sm text-muted-foreground">Checking your session…</p>
+            ) : (
+                <form className="space-y-4" onSubmit={onSubmit} noValidate>
+                    {banner ? (
+                        <p role="alert" className="text-sm text-destructive">
+                            {banner}
+                        </p>
+                    ) : null}
+                    <div>
+                        <Label className="text-xs text-muted-foreground" htmlFor="email">Work email</Label>
+                        <Input
+                            id="email"
+                            className="mt-1.5"
+                            type="email"
+                            autoComplete="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            aria-invalid={emailError ? true : undefined}
+                            required
+                        />
+                        {emailError ? <p className="mt-1 text-xs text-destructive">{emailError}</p> : null}
+                    </div>
+                    <div>
+                        <Label className="text-xs text-muted-foreground" htmlFor="password">Password</Label>
+                        <Input
+                            id="password"
+                            className="mt-1.5"
+                            type="password"
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(event) => setPassword(event.target.value)}
+                            aria-invalid={passwordError ? true : undefined}
+                            required
+                        />
+                        {passwordError ? <p className="mt-1 text-xs text-destructive">{passwordError}</p> : null}
+                    </div>
+                    <Button type="submit" className="w-full" disabled={submitting}>
+                        {submitting ? "Signing in…" : "Sign in"}
+                    </Button>
+                </form>
+            )}
         </AuthLayout>
     );
 }

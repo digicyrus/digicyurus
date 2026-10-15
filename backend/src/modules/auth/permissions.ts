@@ -1,0 +1,222 @@
+export const ROLE_KEYS = [
+  "super_admin",
+  "admin",
+  "sales_executive",
+  "project_manager",
+  "developer",
+  "marketing_executive",
+  "hr",
+  "accountant",
+  "client",
+] as const;
+
+export type RoleKey = (typeof ROLE_KEYS)[number];
+
+export const ROLE_NAMES: Record<RoleKey, string> = {
+  super_admin: "Super Admin",
+  admin: "Admin",
+  sales_executive: "Sales Executive",
+  project_manager: "Project Manager",
+  developer: "Developer",
+  marketing_executive: "Marketing Executive",
+  hr: "HR",
+  accountant: "Accountant",
+  client: "Client",
+};
+
+export const ALL_PERMISSIONS = [
+  "dashboard:view",
+  "clients:view",
+  "clients:create",
+  "clients:update",
+  "leads:view",
+  "leads:create",
+  "leads:update",
+  "leads:move_stage",
+  "follow_ups:view",
+  "follow_ups:create",
+  "follow_ups:update",
+  "sales:view",
+  "pipeline:view",
+  "pipeline:create",
+  "pipeline:update",
+  "pipeline:move_stage",
+  "forecast:view",
+  "proposals:view",
+  "proposals:create",
+  "proposals:update",
+  "proposals:change_status",
+  "agreements:view",
+  "agreements:create",
+  "agreements:update",
+  "agreements:change_status",
+  "projects:view",
+  "projects:create",
+  "projects:update",
+  "tasks:view",
+  "tasks:create",
+  "tasks:update",
+  "planner:view",
+  "planner:update",
+  "campaigns:view",
+  "content:view",
+  "finance:view",
+  "invoices:view",
+  "invoices:create",
+  "invoices:update",
+  "invoices:record_payment",
+  "invoices:export",
+  "expenses:view",
+  "expenses:create",
+  "expenses:update",
+  "referrals:view",
+  "referrals:create",
+  "referrals:update",
+  "reports:view",
+  "reports:export",
+  "assets:view",
+  "assets:create",
+  "assets:update",
+  "employees:view",
+  "employees:create",
+  "employees:update",
+  "attendance:view",
+  "payroll:view",
+  "daily_reports:view",
+  "daily_reports:create",
+  "daily_reports:update",
+  "settings:view",
+  "settings:update",
+  "service_rates:view",
+  "service_rates:update",
+  "roles:view",
+  "roles:update",
+  "audit_logs:view",
+] as const;
+
+export type PermissionKey = (typeof ALL_PERMISSIONS)[number];
+
+const ADMIN: PermissionKey[] = [
+  "dashboard:view",
+  "clients:view",
+  "clients:create",
+  "clients:update",
+  "projects:view",
+  "projects:create",
+  "projects:update",
+  "tasks:view",
+  "tasks:create",
+  "tasks:update",
+  "finance:view",
+  "invoices:view",
+  "invoices:create",
+  "invoices:update",
+  "invoices:record_payment",
+  "invoices:export",
+  "expenses:view",
+  "expenses:create",
+  "expenses:update",
+  "referrals:view",
+  "referrals:create",
+  "referrals:update",
+  "employees:view",
+  "employees:create",
+  "employees:update",
+  "attendance:view",
+  "payroll:view",
+  "daily_reports:view",
+  "daily_reports:create",
+  "daily_reports:update",
+  "reports:view",
+  "reports:export",
+];
+
+const SALES: PermissionKey[] = [
+  "dashboard:view",
+  "clients:view",
+  "clients:create",
+  "clients:update",
+  "leads:view",
+  "leads:create",
+  "leads:update",
+  "leads:move_stage",
+  "follow_ups:view",
+  "follow_ups:create",
+  "follow_ups:update",
+  "sales:view",
+  "pipeline:view",
+  "pipeline:create",
+  "pipeline:update",
+  "pipeline:move_stage",
+  "forecast:view",
+  "proposals:view",
+  "proposals:create",
+  "proposals:update",
+  "proposals:change_status",
+  "agreements:view",
+  "agreements:create",
+  "agreements:update",
+  "agreements:change_status",
+];
+
+const PROJECT_MANAGER: PermissionKey[] = [
+  "dashboard:view",
+  "clients:view",
+  "projects:view",
+  "projects:create",
+  "projects:update",
+  "tasks:view",
+  "tasks:create",
+  "tasks:update",
+];
+
+const DEVELOPER: PermissionKey[] = [
+  "projects:view",
+  "tasks:view",
+  "tasks:update",
+  "planner:view",
+  "planner:update",
+];
+
+const MARKETING: PermissionKey[] = [
+  "campaigns:view",
+  "content:view",
+  "leads:view",
+  "reports:view",
+  "reports:export",
+];
+
+const HR: PermissionKey[] = ["employees:view", "attendance:view", "payroll:view", "daily_reports:view"];
+
+const ACCOUNTANT: PermissionKey[] = [
+  "finance:view",
+  "invoices:view",
+  "invoices:create",
+  "invoices:update",
+  "invoices:record_payment",
+  "invoices:export",
+  "expenses:view",
+  "referrals:view",
+  "reports:view",
+  "reports:export",
+];
+
+const GRANTS: Record<RoleKey, readonly PermissionKey[]> = {
+  super_admin: ALL_PERMISSIONS,
+  admin: ADMIN,
+  sales_executive: SALES,
+  project_manager: PROJECT_MANAGER,
+  developer: DEVELOPER,
+  marketing_executive: MARKETING,
+  hr: HR,
+  accountant: ACCOUNTANT,
+  client: [],
+};
+
+export function permissionsForRole(role: RoleKey): readonly PermissionKey[] {
+  return GRANTS[role];
+}
+
+export function isRoleKey(value: string): value is RoleKey {
+  return (ROLE_KEYS as readonly string[]).includes(value);
+}
